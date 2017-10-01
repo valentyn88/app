@@ -1,32 +1,34 @@
 package main
 
 import (
-	"context"
+	"github.com/gorilla/mux"
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/postgres"
+	"github.com/valentyn88/app"
+	httpApp "github.com/valentyn88/app/http"
+	"log"
 	"net/http"
-	"time"
 )
 
-func main() {
+var cache *app.Cache
 
+func init() {
+	cache = app.NewCache()
 }
 
-func searchHandler(w http.ResponseWriter, r *http.Request) {
-	var (
-		ctx    context.Context
-		cancel context.CancelFunc
-	)
-
-	timeout, err := time.ParseDuration(r.FormValue("timeout"))
-	if err == nil {
-		ctx, cancel = context.WithTimeout(context.Background(), timeout)
-	} else {
-		ctx, cancel := context.WithCancel(context.Background())
+func main() {
+	db, err := gorm.Open("postgres", "host=localhost user=gorm dbname=gorm sslmode=disable password=mypassword")
+	if err != nil {
+		log.Fatal(err)
 	}
-	defer cancel()
+	defer db.Close()
 
-	query := r.FormValue("q")
-	if query == "" {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	basicUser := app.NewBasicUser(cache)
+	userHandler := httpApp.NewUserHandler(basicUser)
+
+	r := mux.NewRouter()
+	r.HandleFunc("/user/{id:[0-9]+}", userHandler.GetUser).Methods("GET")
+	r.HandleFunc("/user/new", userHandler.CreateUser).Methods("POST")
+	r.HandleFunc("/user/{id:[0-9]+}", userHandler.UpdateUser).Methods("POST")
+	log.Fatal(http.ListenAndServe(":8080", r))
 }

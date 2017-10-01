@@ -1,0 +1,15 @@
+version: '2'
+
+services:
+    golang:
+        build: ./cmd/app
+        ports:
+            - "8080:8080"
+    postgres:
+        image: postgres:latest
+        ports:
+            - "5432:5432"
+        environment:
+            - DB_USER=gorm
+            - DB_PASS=mypassword
+            - DB_NAME=gorm
